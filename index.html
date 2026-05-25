@@ -1,10 +1,1857 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
-    <title>我的网站</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>情绪星空</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #000; color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif; overflow: hidden; height: 100vh; width: 100vw; }
+
+/* ===== 注册弹窗 ===== */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.92); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.modal { background: #0a0a0a; border: 1px solid #222; border-radius: 18px; padding: 40px 32px; max-width: 380px; width: 90%; text-align: center; }
+.modal h2 { font-size: 22px; margin-bottom: 10px; font-weight: 500; letter-spacing: 1px; }
+.modal p { color: #777; font-size: 13px; margin-bottom: 24px; line-height: 1.7; }
+.modal input { width: 100%; padding: 12px 16px; background: #141414; border: 1px solid #2a2a2a; border-radius: 10px; color: #fff; font-size: 15px; outline: none; margin-bottom: 14px; transition: border-color .2s; }
+.modal input:focus { border-color: #555; }
+.modal button.primary { width: 100%; padding: 12px; background: #fff; color: #000; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.modal button.primary:hover { opacity: 0.85; }
+.login-switch { margin-top: 16px; font-size: 12px; color: #666; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.login-switch .text-link { background: none; border: none; color: #888; cursor: pointer; font-size: 12px; text-decoration: underline; }
+.login-switch .text-link:hover { color: #fff; }
+
+/* ===== 主画布 ===== */
+#skyCanvas { position: fixed; inset: 0; cursor: grab; touch-action: none; }
+#skyCanvas:active { cursor: grabbing; }
+.zoom-hint { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,0.3); font-size: 11px; letter-spacing: 2px; z-index: 50; pointer-events: none; }
+
+/* ===== 设置面板 ===== */
+.settings-panel { position: fixed; width: 290px; background: rgba(8,8,8,0.92); border: 1px solid #1f1f1f; border-radius: 16px; padding: 18px; backdrop-filter: blur(24px); z-index: 100; }
+.settings-panel.pos-tl { top: 20px; left: 20px; }
+.settings-panel.pos-tr { top: 20px; right: 20px; }
+.settings-panel.pos-bl { bottom: 80px; left: 20px; }
+.settings-panel.pos-br { bottom: 80px; right: 20px; }
+
+.panel-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; gap: 12px; }
+.panel-header .title-block h3 { font-size: 14px; font-weight: 600; margin-bottom: 3px; letter-spacing: 0.5px; }
+.panel-header .greeting { font-size: 11px; color: #555; }
+.pos-btns { display: flex; gap: 3px; }
+.pos-btns button { width: 22px; height: 22px; background: #161616; border: 1px solid #252525; border-radius: 4px; color: #555; font-size: 11px; cursor: pointer; padding: 0; }
+.pos-btns button:hover { background: #222; color: #999; }
+.pos-btns button.active { background: #2a2a2a; color: #fff; border-color: #444; }
+
+/* 能量值 */
+.energy-section { margin-bottom: 16px; }
+.energy-section label { display: flex; justify-content: space-between; font-size: 12px; color: #888; margin-bottom: 8px; }
+.energy-section label span { color: #fff; font-weight: 600; }
+input[type="range"] { -webkit-appearance: none; width: 100%; height: 4px; background: #1c1c1c; border-radius: 2px; outline: none; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; background: #fff; border-radius: 50%; cursor: pointer; box-shadow: 0 0 6px rgba(255,255,255,0.4); }
+
+/* 色环 */
+.color-section { margin-bottom: 14px; }
+.color-section label { display: block; font-size: 12px; color: #888; margin-bottom: 8px; }
+.color-ring-wrap { display: flex; align-items: center; gap: 12px; }
+#colorRing { cursor: crosshair; }
+.color-preview { width: 38px; height: 38px; border-radius: 50%; border: 2px solid #2a2a2a; flex-shrink: 0; transition: all .3s; }
+
+.note-section { margin-bottom: 12px; display: none; animation: fadeIn .3s; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+.note-section label { display: block; font-size: 12px; color: #888; margin-bottom: 6px; }
+.note-section textarea { width: 100%; height: 56px; background: #141414; border: 1px solid #2a2a2a; border-radius: 8px; color: #fff; padding: 8px 10px; font-size: 12px; resize: none; outline: none; font-family: inherit; }
+.note-section textarea:focus { border-color: #555; }
+
+.submit-btn { width: 100%; padding: 10px; background: #fff; color: #000; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: none; animation: fadeIn .3s; }
+.submit-btn:hover { opacity: 0.85; }
+
+/* 今日已记录的状态 */
+.today-status { text-align: center; padding: 12px 0; }
+.today-dot-wrap { width: 60px; height: 60px; margin: 0 auto 12px; position: relative; }
+.today-dot { width: 18px; height: 18px; border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); }
+.today-dot-glow { width: 100%; height: 100%; border-radius: 50%; position: absolute; opacity: 0.6; filter: blur(10px); }
+.today-status .info { font-size: 12px; color: #888; margin-bottom: 4px; }
+.today-status .info strong { color: #fff; }
+.today-status .label { color: #444; font-size: 11px; margin-top: 8px; letter-spacing: 1px; }
+
+/* ===== 底部导航 ===== */
+.bottom-nav { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 100; }
+.bottom-nav button { padding: 8px 18px; background: rgba(255,255,255,0.05); border: 1px solid #1f1f1f; border-radius: 20px; color: #888; font-size: 12px; cursor: pointer; backdrop-filter: blur(10px); transition: all .2s; }
+.bottom-nav button:hover { background: rgba(255,255,255,0.12); color: #fff; }
+.bottom-nav button.danger:hover { color: #ff8a8a; border-color: #4a2222; }
+
+/* ===== 日历弹窗 ===== */
+.calendar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.92); display: none; align-items: center; justify-content: center; z-index: 900; backdrop-filter: blur(8px); }
+.calendar-modal { background: #0a0a0a; border: 1px solid #222; border-radius: 18px; padding: 28px; max-width: 460px; width: 90%; max-height: 85vh; overflow-y: auto; }
+.cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.cal-header h2 { font-size: 16px; font-weight: 500; letter-spacing: 1px; }
+.cal-header .close { background: transparent; border: none; color: #555; font-size: 20px; cursor: pointer; padding: 0; line-height: 1; }
+.cal-header .close:hover { color: #fff; }
+
+.cal-month-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.cal-month-nav button { background: transparent; border: none; color: #666; cursor: pointer; padding: 4px 10px; font-size: 14px; }
+.cal-month-nav button:hover { color: #fff; }
+.cal-month-nav .month-text { font-size: 13px; color: #aaa; }
+
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal-day-label { font-size: 10px; color: #444; text-align: center; padding: 4px 0; }
+.cal-day { aspect-ratio: 1; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #444; transition: transform .2s; position: relative; background: #0e0e0e; }
+.cal-day:hover { transform: scale(1.15); z-index: 1; }
+.cal-day.empty { cursor: default; background: transparent; }
+.cal-day.future { opacity: 0.25; cursor: default; }
+.cal-day.future:hover { transform: none; }
+.cal-day.has-record { color: rgba(255,255,255,0.7); font-weight: 600; }
+
+.day-detail { background: #141414; border-radius: 12px; padding: 18px; margin-top: 16px; display: none; }
+.day-detail .detail-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.day-detail .detail-dot { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; }
+.day-detail .detail-info .date { font-size: 13px; color: #fff; }
+.day-detail .detail-info .energy { font-size: 11px; color: #888; margin-top: 2px; }
+.day-detail .detail-note { font-size: 12px; color: #999; line-height: 1.7; padding-top: 12px; border-top: 1px solid #1f1f1f; white-space: pre-wrap; }
+
+/* ===== Toast ===== */
+.toast { position: fixed; top: 30px; left: 50%; transform: translateX(-50%); background: rgba(255,255,255,0.1); backdrop-filter: blur(20px); padding: 10px 22px; border-radius: 22px; font-size: 12px; color: #fff; z-index: 2000; opacity: 0; transition: opacity .3s; pointer-events: none; }
+.toast.show { opacity: 1; }
+
+/* ===== 流星离场动画的全屏遮罩 ===== */
+.farewell-overlay { position: fixed; inset: 0; background: #000; display: none; align-items: center; justify-content: center; z-index: 5000; }
+.farewell-text { color: rgba(255,255,255,0.5); font-size: 14px; letter-spacing: 4px; opacity: 0; transition: opacity 1s; }
+.farewell-text.show { opacity: 1; }
+
+/* ===== 响应式设计 ===== */
+@media (max-width: 768px) {
+  /* 移动端优化 */
+  .modal { padding: 32px 24px; }
+  .modal h2 { font-size: 20px; }
+  .modal p { font-size: 12px; }
+  .modal input { padding: 14px 16px; font-size: 16px; } /* 增大点击区域 */
+  
+  /* 设置面板优化 */
+  .settings-panel { width: 260px; padding: 16px; }
+  .settings-panel.pos-tl,
+  .settings-panel.pos-tr { top: 16px; }
+  .settings-panel.pos-bl,
+  .settings-panel.pos-br { bottom: 70px; }
+  
+  /* 色环优化 */
+  #colorRing { width: 100px !important; height: 100px !important; }
+  .color-preview { width: 32px; height: 32px; }
+  
+  /* 底部导航优化 */
+  .bottom-nav { bottom: 16px; gap: 8px; }
+  .bottom-nav button { padding: 10px 16px; font-size: 13px; }
+  
+  /* 日历优化 */
+  .calendar-modal { padding: 24px 20px; }
+  .cal-day { font-size: 12px; }
+  
+  /* 提示文字优化 */
+  .zoom-hint { font-size: 10px; letter-spacing: 1px; }
+  
+  /* 增大点击区域 */
+  .pos-btns button { width: 24px; height: 24px; font-size: 12px; }
+  .submit-btn { padding: 12px; font-size: 14px; }
+}
+
+@media (max-width: 480px) {
+  /* 小屏手机优化 */
+  .modal { padding: 28px 20px; }
+  .modal h2 { font-size: 18px; }
+  
+  .settings-panel { width: 240px; }
+  .settings-panel.pos-tl,
+  .settings-panel.pos-tr,
+  .settings-panel.pos-bl,
+  .settings-panel.pos-br {
+    left: 12px;
+    right: 12px;
+    width: calc(100% - 24px);
+  }
+  
+  /* 底部导航按钮调整 */
+  .bottom-nav button { padding: 12px 14px; font-size: 12px; }
+  
+  /* 日历调整 */
+  .calendar-modal { padding: 20px 16px; }
+  .cal-grid { gap: 3px; }
+  .cal-day { font-size: 11px; }
+  
+  /* Toast调整 */
+  .toast { padding: 12px 20px; font-size: 13px; }
+}
+
+@media (max-height: 600px) {
+  /* 小屏设备垂直空间优化 */
+  .modal { padding: 24px 20px; }
+  .settings-panel { padding: 14px; }
+  .calendar-modal { max-height: 90vh; }
+  .today-dot-wrap { width: 50px; height: 50px; }
+}
+
+/* 平板设备优化 */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .settings-panel { width: 280px; }
+  .modal { max-width: 340px; }
+}
+
+/* 触控设备优化 */
+@media (hover: none) and (pointer: coarse) {
+  /* 增大触控区域 */
+  .modal input { padding: 14px 16px; }
+  .modal button.primary { padding: 14px; }
+  .submit-btn { padding: 12px; }
+  .bottom-nav button { padding: 10px 18px; }
+  
+  /* 移除hover效果，优化触控体验 */
+  .modal button.primary:hover,
+  .submit-btn:hover,
+  .bottom-nav button:hover {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+  
+  /* 增大点击反馈 */
+  .cal-day:active { transform: scale(1.1); }
+}
+
+/* 深色模式优化 */
+@media (prefers-color-scheme: dark) {
+  /* 确保深色模式下的对比度 */
+  .modal { background: #0a0a0a; }
+  .settings-panel { background: rgba(8,8,8,0.95); }
+}
+
+/* 减少动画效果（用户偏好） */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+</style>
 </head>
 <body>
-    <h1>GitHub Pages 部署成功啦！</h1>
-    <p>这是我用 GitHub 搭建的免费网站</p>
+
+<canvas id="skyCanvas"></canvas>
+<div class="zoom-hint" id="zoomHint">滚轮缩放 · 拖动平移</div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== 注册弹窗 ====== -->
+<div class="modal-overlay" id="registerModal">
+  <div class="modal">
+    <h2>✦ 欢迎来到情绪星空</h2>
+    <p>每个人是其中一颗星<br>用颜色和亮度，留下今天的存在</p>
+    <input type="text" id="regName" placeholder="给自己起个名字" maxlength="20" />
+    <input type="text" id="regPassword" placeholder="设置密码（可选）" maxlength="20" />
+    <button class="primary" onclick="register()">点亮我的位置</button>
+    <div class="login-switch">
+      <span>已有账号？</span>
+      <button onclick="switchToLogin()" class="text-link">登录</button>
+    </div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+  </div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== 设置面板 ====== -->
+<div class="settings-panel pos-br" id="settingsPanel" style="display:none">
+  <div class="panel-header">
+    <div class="title-block">
+      <h3 id="panelTitle">今天是什么心情？</h3>
+      <div class="greeting" id="panelGreeting"></div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+    </div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+    <div class="pos-btns">
+      <button onclick="movePanel(this,'tl')" title="左上">↖</button>
+      <button onclick="movePanel(this,'tr')" title="右上">↗</button>
+      <button onclick="movePanel(this,'bl')" title="左下">↙</button>
+      <button class="active" onclick="movePanel(this,'br')" title="右下">↘</button>
+    </div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+  </div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+
+  <!-- 设置区 -->
+  <div id="setupSection">
+    <div class="energy-section">
+      <label>能量值 <span id="energyVal">50%</span></label>
+      <input type="range" id="energySlider" min="0" max="100" value="50" oninput="updateEnergy()" />
+    </div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+    <div class="color-section">
+      <label>今天的心情是什么颜色？</label>
+      <div class="color-ring-wrap">
+        <canvas id="colorRing" width="130" height="130"></canvas>
+        <div class="color-preview" id="colorPreview" style="background:#222"></div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+      </div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+    </div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+    <div class="note-section" id="noteSection">
+      <label>为什么是这个颜色？</label>
+      <textarea id="noteText" placeholder="写点什么...（仅自己可见）"></textarea>
+    </div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+    <button class="submit-btn" id="submitBtn" onclick="submitToday()">记录今天</button>
+  </div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+
+  <!-- 已记录区 -->
+  <div id="todayStatus" style="display:none">
+    <div class="today-status">
+      <div class="today-dot-wrap" onclick="locateToMyStar()">
+        <div class="today-dot-glow" id="todayDotGlow"></div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+        <div class="today-dot" id="todayDot"></div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+      </div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+      <div class="info">能量 <strong id="todayEnergy"></strong> · <span id="todayColorName"></span></div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+      <div class="label">TODAY · 已记录</div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+    </div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+  </div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== 底部导航 ====== -->
+<div class="bottom-nav" id="bottomNav" style="display:none">
+  <button onclick="openCalendar()">📅 情绪日历</button>
+  <button class="danger" onclick="farewell()">✦ 离场</button>
+</div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== 日历弹窗 ====== -->
+<div class="calendar-overlay" id="calendarOverlay" onclick="if(event.target===this)closeCalendar()">
+  <div class="calendar-modal">
+    <div class="cal-header">
+      <h2>我的情绪日历</h2>
+      <button class="close" onclick="closeCalendar()">×</button>
+    </div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+    <div class="cal-month-nav">
+      <button onclick="changeMonth(-1)">‹</button>
+      <div class="month-text" id="calMonthText"></div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+      <button onclick="changeMonth(1)">›</button>
+    </div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+    <div class="cal-grid" id="calGrid"></div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+    <div class="day-detail" id="dayDetail">
+      <div class="detail-head">
+        <div class="detail-dot" id="dayDetailDot"></div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+        <div class="detail-info">
+          <div class="date" id="dayDetailDate"></div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+          <div class="energy" id="dayDetailEnergy"></div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+        </div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+      </div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+      <div class="detail-note" id="dayDetailNote"></div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+    </div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+  </div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== Toast ====== -->
+<div class="toast" id="toast"></div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== 流星离场遮罩 ====== -->
+<div class="farewell-overlay" id="farewellOverlay">
+  <div class="farewell-text" id="farewellText">明天见 ✦</div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ====== 登录弹窗 ====== -->
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal">
+    <h2>✦ 欢迎回来</h2>
+    <p>继续你的情绪星空之旅<br>今天是什么心情？</p>
+    <input type="text" id="loginName" placeholder="你的名字" maxlength="20" />
+    <input type="text" id="loginPassword" placeholder="输入密码" maxlength="20" />
+    <button class="primary" onclick="login()">登录</button>
+    <div class="login-switch">
+      <span>还没有账号？</span>
+      <button onclick="switchToRegister()" class="text-link">注册</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========== 数据层 ==========
+const DB_KEY = 'emotionSkyData_v1';
+const USERS_KEY = 'emotionSkyUsers_v1';
+const today = () => { const d = new Date(); return ymd(d); };
+function ymd(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+
+function loadDB() {
+  try { return JSON.parse(localStorage.getItem(DB_KEY)) || {}; }
+  catch { return {}; }
+}
+function saveDB(db) { localStorage.setItem(DB_KEY, JSON.stringify(db)); }
+function getCurrentUser() { return loadDB().currentUser || null; }
+function setCurrentUser(user) { const db = loadDB(); db.currentUser = user; saveDB(db); }
+function getUsers() { try { return JSON.parse(localStorage.getItem(USERS_KEY)) || {}; } catch { return {}; } }
+function saveUsers(users) { localStorage.setItem(USERS_KEY, JSON.stringify(users)); }
+function getUserByName(name) { const users = getUsers(); return users[name] || null; }
+
+// ========== 注册 ==========
+function register() {
+  const name = document.getElementById('regName').value.trim();
+  const password = document.getElementById('regPassword').value.trim();
+  
+  if (!name) {
+    showToast('请输入名字');
+    return;
+  }
+  
+  const users = getUsers();
+  if (users[name]) {
+    showToast('该名字已被使用');
+    return;
+  }
+  
+  // 真实经纬度范围（精度 0.1°）
+  const gridX = Math.round((Math.random() * 360 - 180) * 10) / 10;
+  const gridY = Math.round((Math.random() * 170 - 85) * 10) / 10;
+  
+  const userData = {
+    name,
+    password: password || null,
+    gridX,
+    gridY,
+    records: {},
+    created: new Date().toISOString()
+  };
+  
+  users[name] = userData;
+  saveUsers(users);
+  setCurrentUser(userData);
+  
+  document.getElementById('registerModal').style.display = 'none';
+  showMainUI();
+  showToast(`✦ 欢迎来到情绪星空，${name}`);
+}
+
+// ========== 登录 ==========
+function login() {
+  const name = document.getElementById('loginName').value.trim();
+  const password = document.getElementById('loginPassword').value.trim();
+  
+  if (!name) {
+    showToast('请输入名字');
+    return;
+  }
+  
+  const user = getUserByName(name);
+  if (!user) {
+    showToast('用户不存在');
+    return;
+  }
+  
+  if (user.password && user.password !== password) {
+    showToast('密码错误');
+    return;
+  }
+  
+  setCurrentUser(user);
+  document.getElementById('loginModal').style.display = 'none';
+  showMainUI();
+  showToast(`✦ 欢迎回来，${name}`);
+}
+
+// ========== 切换登录/注册 ==========
+function switchToLogin() {
+  document.getElementById('registerModal').style.display = 'none';
+  document.getElementById('loginModal').style.display = 'flex';
+}
+
+function switchToRegister() {
+  document.getElementById('loginModal').style.display = 'none';
+  document.getElementById('registerModal').style.display = 'flex';
+}
+
+// 经纬度格式化
+function formatLon(x) { const v = Math.abs(x).toFixed(1); return (x >= 0 ? v + '°E' : v + '°W'); }
+function formatLat(y) { const v = Math.abs(y).toFixed(1); return (y >= 0 ? v + '°N' : v + '°S'); }
+function formatCoord(x, y) { return formatLon(x) + ' · ' + formatLat(y); }
+
+// ========== 主UI ==========
+function showMainUI() {
+  const me = getCurrentUser();
+  if (!me) return;
+
+  document.getElementById('settingsPanel').style.display = 'block';
+  document.getElementById('bottomNav').style.display = 'flex';
+  document.getElementById('panelGreeting').textContent = `${me.name} · ${formatCoord(me.gridX, me.gridY)}`;
+
+  // 视图居中到自己的位置（每 1° = 8px，初始视角）
+  const gridSize = 8;
+  view.scale = 1;
+  view.x = window.innerWidth / 2 - me.gridX * gridSize;
+  view.y = window.innerHeight / 2 - me.gridY * gridSize;
+
+  const todayKey = today();
+  if (me.records[todayKey]) showTodayStatus(me.records[todayKey]);
+  else showSetup();
+
+  startSky();
+
+  const hint = document.getElementById('zoomHint');
+  if (hint) {
+    setTimeout(() => { hint.style.transition = 'opacity 1s'; hint.style.opacity = '0'; }, 4000);
+  }
+}
+
+function showSetup() {
+  document.getElementById('setupSection').style.display = 'block';
+  document.getElementById('todayStatus').style.display = 'none';
+  document.getElementById('noteSection').style.display = 'none';
+  document.getElementById('submitBtn').style.display = 'none';
+  document.getElementById('panelTitle').textContent = '今天是什么心情？';
+  document.getElementById('energySlider').value = 50;
+  document.getElementById('energyVal').textContent = '50%';
+  selectedColor = null;
+  colorPicked = false;
+  document.getElementById('colorPreview').style.background = '#222';
+}
+
+function showTodayStatus(record) {
+  document.getElementById('setupSection').style.display = 'none';
+  document.getElementById('todayStatus').style.display = 'block';
+  document.getElementById('panelTitle').textContent = '✦ 今日已亮起';
+  document.getElementById('todayDot').style.background = record.color;
+  document.getElementById('todayDot').style.boxShadow = `0 0 12px ${record.color}`;
+  document.getElementById('todayDotGlow').style.background = record.color;
+  
+  // 添加点击提示样式
+  document.querySelector('.today-dot-wrap').style.cursor = 'pointer';
+  document.querySelector('.today-dot-wrap').style.transition = 'transform 0.2s';
+  document.getElementById('todayEnergy').textContent = record.energy + '%';
+  document.getElementById('todayColorName').textContent = record.color.toUpperCase();
+}
+
+function updateEnergy() {
+  document.getElementById('energyVal').textContent = document.getElementById('energySlider').value + '%';
+}
+
+// ========== 色环 ==========
+let selectedColor = null;
+let colorPicked = false;
+
+function drawColorRing() {
+  const canvas = document.getElementById('colorRing');
+  const ctx = canvas.getContext('2d');
+  const cx = 65, cy = 65, outerR = 60, innerR = 38;
+
+  // 外环：色相
+  for (let a = 0; a < 360; a += 0.5) {
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    const start = (a - 0.5) * Math.PI / 180;
+    const end = (a + 0.5) * Math.PI / 180;
+    ctx.arc(cx, cy, outerR, start, end);
+    ctx.closePath();
+    ctx.fillStyle = `hsl(${a}, 90%, 55%)`;
+    ctx.fill();
+  }
+  // 中心挖空
+  ctx.beginPath();
+  ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
+  ctx.fillStyle = '#0a0a0a';
+  ctx.fill();
+
+  // 中心提示文字
+  ctx.font = '10px sans-serif';
+  ctx.fillStyle = '#444';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('点击选色', cx, cy);
+}
+
+function pickColor(e) {
+  const canvas = document.getElementById('colorRing');
+  const rect = canvas.getBoundingClientRect();
+  const ev = e.touches ? e.touches[0] : e;
+  const x = (ev.clientX - rect.left) * canvas.width / rect.width;
+  const y = (ev.clientY - rect.top) * canvas.height / rect.height;
+  const ctx = canvas.getContext('2d');
+  const px = ctx.getImageData(x, y, 1, 1).data;
+
+  // 排除中心黑色区
+  if (px[0] < 30 && px[1] < 30 && px[2] < 30) return;
+  if (px[3] === 0) return;
+
+  const hex = '#' + [px[0], px[1], px[2]].map(v => v.toString(16).padStart(2, '0')).join('');
+  selectedColor = hex;
+  document.getElementById('colorPreview').style.background = hex;
+  document.getElementById('colorPreview').style.boxShadow = `0 0 16px ${hex}`;
+
+  if (!colorPicked) {
+    colorPicked = true;
+    document.getElementById('noteSection').style.display = 'block';
+    document.getElementById('submitBtn').style.display = 'block';
+  }
+}
+
+// ========== 提交记录 ==========
+function submitToday() {
+  if (!selectedColor) { showToast('先在色环上选个颜色'); return; }
+  const me = getCurrentUser();
+  const energy = parseInt(document.getElementById('energySlider').value);
+  const note = document.getElementById('noteText').value.trim();
+  const todayKey = today();
+
+  // 检查今天是否已经有记录
+  const existingRecord = me.records[todayKey];
+  
+  me.records[todayKey] = {
+    color: selectedColor,
+    energy,
+    note,
+    timestamp: new Date().toISOString(),
+    updateCount: existingRecord ? (existingRecord.updateCount || 0) + 1 : 1
+  };
+  
+  // 立即同步数据
+  syncUserData();
+  
+  showTodayStatus(me.records[todayKey]);
+  
+  const message = existingRecord 
+    ? `✦ 已更新今天的记录 (第${me.records[todayKey].updateCount}次)` 
+    : '✦ 你的星已亮起';
+  showToast(message);
+}
+
+// ========== 面板位置 ==========
+function movePanel(btn, pos) {
+  document.getElementById('settingsPanel').className = 'settings-panel pos-' + pos;
+  document.querySelectorAll('.pos-btns button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ========== 定位到我的星星 ==========
+function locateToMyStar() {
+  const me = getCurrentUser();
+  if (!me) return;
+
+  const gridSize = 8;
+  const targetX = me.gridX * gridSize;
+  const targetY = me.gridY * gridSize;
+  
+  // 动画定位
+  const startX = view.x;
+  const startY = view.y;
+  const startScale = view.scale;
+  const targetScale = 1.2; // 定位时稍微放大一点
+  const targetViewX = window.innerWidth / 2 - targetX * targetScale;
+  const targetViewY = window.innerHeight / 2 - targetY * targetScale;
+  
+  const duration = 800; // 动画持续时间（毫秒）
+  const startTime = Date.now();
+  
+  function animate() {
+    const elapsed = Date.now() - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    
+    // 使用缓动函数使动画更自然
+    const easeProgress = 1 - Math.pow(1 - progress, 3);
+    
+    view.x = startX + (targetViewX - startX) * easeProgress;
+    view.y = startY + (targetViewY - startY) * easeProgress;
+    view.scale = startScale + (targetScale - startScale) * easeProgress;
+    
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      // 定位完成后显示提示
+      showToast('✦ 已定位到你的星星');
+    }
+  }
+  
+  animate();
+}
+
+// ========== 星空动画 ==========
+let skyAnimId = null;
+let stars = [];      // 背景小星星（闪烁）
+let meteors = [];    // 流星列表
+let networkMeteors = []; // 网络流星列表（其他用户的）
+let view = { x: 0, y: 0, scale: 1 };  // 视图变换：平移 + 缩放
+let isLeaving = false;  // 离场状态：自己的星点变成流星，不再绘制原位
+
+function initStars() {
+  const W = window.innerWidth, H = window.innerHeight;
+  stars = [];
+  for (let i = 0; i < 250; i++) {
+    stars.push({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      r: Math.random() * 1.2 + 0.2,
+      o: Math.random() * 0.5 + 0.1,
+      twinkle: Math.random() * Math.PI * 2,
+      speed: Math.random() * 0.02 + 0.005
+    });
+  }
+}
+
+function startSky() {
+  if (skyAnimId) cancelAnimationFrame(skyAnimId);
+  initStars();
+  loop();
+  // 启动网络模拟
+  startNetworkSimulation();
+}
+
+function loop() {
+  drawSky();
+  skyAnimId = requestAnimationFrame(loop);
+}
+
+function drawSky() {
+  const canvas = document.getElementById('skyCanvas');
+  const ctx = canvas.getContext('2d');
+  if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  const W = canvas.width, H = canvas.height;
+
+  // 渐变深色背景（不受变换影响）
+  const bg = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, Math.max(W,H)*0.7);
+  bg.addColorStop(0, '#050510');
+  bg.addColorStop(1, '#000000');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // 背景闪烁星（不缩放，固定在屏幕上）
+  stars.forEach(s => {
+    s.twinkle += s.speed;
+    const o = s.o * (0.5 + 0.5 * Math.sin(s.twinkle));
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${o})`;
+    ctx.fill();
+  });
+
+  // 应用视图变换：网格、用户星点、流星都跟着缩放和平移
+  ctx.save();
+  ctx.translate(view.x, view.y);
+  ctx.scale(view.scale, view.scale);
+
+  // 1° = 8px（基础网格单位）
+  const gridSize = 8;
+
+  // 计算当前视图能看到的网格范围（限制在地球范围内）
+  const viewLeft = -view.x / view.scale;
+  const viewTop = -view.y / view.scale;
+  const viewRight = viewLeft + W / view.scale;
+  const viewBottom = viewTop + H / view.scale;
+
+  // 网格透明度随缩放联动：scale<0.6 时彻底隐藏，>1.2 时最清晰
+  const gridOpacity = Math.max(0, Math.min(1, (view.scale - 0.6) / 0.6));
+  // 文字（星点ID/坐标标签）透明度：scale<0.7 时隐藏
+  const labelOpacity = Math.max(0, Math.min(1, (view.scale - 0.7) / 0.5));
+
+  if (gridOpacity > 0.01) {
+    // 主网格：1° 一格
+    const startCol = Math.max(-180, Math.floor(viewLeft / gridSize) - 1);
+    const endCol = Math.min(180, Math.ceil(viewRight / gridSize) + 1);
+    const startRow = Math.max(-90, Math.floor(viewTop / gridSize) - 1);
+    const endRow = Math.min(90, Math.ceil(viewBottom / gridSize) + 1);
+
+    ctx.strokeStyle = `rgba(255,255,255,${0.12 * gridOpacity})`;
+    ctx.lineWidth = 0.5 / view.scale;
+    ctx.beginPath();
+    for (let i = startCol; i <= endCol; i++) {
+      ctx.moveTo(i * gridSize, startRow * gridSize);
+      ctx.lineTo(i * gridSize, endRow * gridSize);
+    }
+    for (let j = startRow; j <= endRow; j++) {
+      ctx.moveTo(startCol * gridSize, j * gridSize);
+      ctx.lineTo(endCol * gridSize, j * gridSize);
+    }
+    ctx.stroke();
+
+    // 主轴线（赤道 + 本初子午线）稍微亮一点
+    ctx.strokeStyle = `rgba(255,255,255,${0.22 * gridOpacity})`;
+    ctx.lineWidth = 0.8 / view.scale;
+    ctx.beginPath();
+    ctx.moveTo(-180 * gridSize, 0);
+    ctx.lineTo(180 * gridSize, 0);
+    ctx.moveTo(0, -90 * gridSize);
+    ctx.lineTo(0, 90 * gridSize);
+    ctx.stroke();
+  }
+
+  // 我的星点（离场状态下不画，让位置看起来"飞走了"）
+  const me = getCurrentUser();
+  if (me && !isLeaving) {
+    const todayKey = today();
+    const rec = me.records[todayKey];
+    const px = me.gridX * gridSize;
+    const py = me.gridY * gridSize;
+
+    if (rec) {
+      const pulse = 1 + 0.2 * Math.sin(Date.now() / 600);
+      drawGlowDot(ctx, px, py, rec.color, rec.energy / 100, pulse);
+      ctx.strokeStyle = `rgba(255,255,255,${0.45 * labelOpacity})`;
+      ctx.lineWidth = 1 / view.scale;
+      ctx.beginPath();
+      ctx.arc(px, py, 12, 0, Math.PI * 2);
+      ctx.stroke();
+      // 名字 + 坐标
+      if (labelOpacity > 0.05) {
+        ctx.font = (11 / view.scale) + 'px sans-serif';
+        ctx.fillStyle = `rgba(255,255,255,${0.75 * labelOpacity})`;
+        ctx.textAlign = 'left';
+        ctx.fillText(me.name, px + 14, py - 2);
+        ctx.font = (9 / view.scale) + 'px sans-serif';
+        ctx.fillStyle = `rgba(255,255,255,${0.4 * labelOpacity})`;
+        ctx.fillText(formatCoord(me.gridX, me.gridY), px + 14, py + 10);
+      }
+    } else {
+      ctx.strokeStyle = `rgba(255,255,255,${0.5 * Math.max(0.3, labelOpacity)})`;
+      ctx.lineWidth = 1.5 / view.scale;
+      ctx.beginPath();
+      ctx.arc(px, py, 6, 0, Math.PI * 2);
+      ctx.stroke();
+      if (labelOpacity > 0.05) {
+        ctx.font = (11 / view.scale) + 'px sans-serif';
+        ctx.fillStyle = `rgba(255,255,255,${0.4 * labelOpacity})`;
+        ctx.textAlign = 'left';
+        ctx.fillText(me.name + ' · 等你点亮', px + 12, py + 4);
+      }
+    }
+  }
+
+  // 绘制所有流星（本地和网络）
+  const allMeteors = [...meteors, ...networkMeteors];
+  
+  // 更新本地流星
+  meteors = meteors.filter(m => m.life > 0);
+  meteors.forEach(m => {
+    m.x += m.vx;
+    m.y += m.vy;
+    m.life -= 1;
+    
+    // 添加到轨迹历史
+    m.trail.push({x: m.x, y: m.y, life: m.life});
+    if (m.trail.length > m.maxTrailLength) {
+      m.trail.shift();
+    }
+  });
+  
+  // 清理网络流星
+  networkMeteors = networkMeteors.filter(m => m.life > 0);
+  networkMeteors.forEach(m => {
+    m.x += m.vx;
+    m.y += m.vy;
+    m.life -= 1;
+    
+    // 添加到轨迹历史
+    m.trail.push({x: m.x, y: m.y, life: m.life});
+    if (m.trail.length > m.maxTrailLength) {
+      m.trail.shift();
+    }
+  });
+  
+  // 绘制所有流星
+  allMeteors.forEach(m => {
+    // 绘制连续的拖尾线条
+    if (m.trail.length > 1) {
+      // 计算基于缩放的线条参数
+      const baseLineWidth = 2 / view.scale; // 基础线宽，与缩放成反比
+      
+      // 绘制主拖尾线条
+      ctx.beginPath();
+      ctx.moveTo(m.trail[0].x, m.trail[0].y);
+      
+      for (let i = 1; i < m.trail.length; i++) {
+        const point = m.trail[i];
+        ctx.lineTo(point.x, point.y);
+      }
+      
+      // 使用渐变线条 - 参考真实流星的亮度分布
+      const gradient = ctx.createLinearGradient(
+        m.trail[0].x, m.trail[0].y,
+        m.x, m.y
+      );
+      // 尾部完全透明，中间较亮，头部最亮
+      gradient.addColorStop(0, m.color + '00');
+      gradient.addColorStop(0.4, m.color + '66');
+      gradient.addColorStop(0.8, m.color + 'cc');
+      gradient.addColorStop(1, m.color + 'ff');
+      
+      ctx.strokeStyle = gradient;
+      ctx.lineWidth = baseLineWidth;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+    }
+    
+    // 绘制流星头部（简化为光点效果）
+    const headOpacity = m.life / m.maxLife;
+    const headSize = 4 / view.scale; // 头部大小与缩放成反比
+    
+    // 简单的光晕效果
+    const headGlow = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, headSize * 2);
+    headGlow.addColorStop(0, '#ffffff');
+    headGlow.addColorStop(0.5, m.color + 'ff');
+    headGlow.addColorStop(1, m.color + '00');
+    
+    ctx.beginPath();
+    ctx.arc(m.x, m.y, headSize * 2, 0, Math.PI * 2);
+    ctx.fillStyle = headGlow;
+    ctx.globalAlpha = headOpacity;
+    ctx.fill();
+    
+    ctx.globalAlpha = 1;
+  });
+
+  ctx.restore();
+}
+
+function drawGlowDot(ctx, x, y, color, energy, scale = 1) {
+  const baseSize = (3 + energy * 4) * scale;
+  const glowSize = baseSize * 4;
+
+  // 外光晕
+  const grad = ctx.createRadialGradient(x, y, 0, x, y, glowSize);
+  grad.addColorStop(0, color + 'cc');
+  grad.addColorStop(0.3, color + '55');
+  grad.addColorStop(1, color + '00');
+  ctx.beginPath();
+  ctx.arc(x, y, glowSize, 0, Math.PI * 2);
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // 核心
+  ctx.beginPath();
+  ctx.arc(x, y, baseSize, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+
+  // 高亮中心
+  ctx.beginPath();
+  ctx.arc(x, y, baseSize * 0.4, 0, Math.PI * 2);
+  ctx.fillStyle = '#ffffff';
+  ctx.globalAlpha = 0.5 * energy;
+  ctx.fill();
+  ctx.globalAlpha = 1;
+}
+
+// ========== 流星离场 ==========
+function createMeteor(x, y, color, energy = 0.7, isNetworkMeteor = false) {
+  // 朝右下方斜飞，但增加更多随机性
+  const angle = Math.PI / 4 + (Math.random() - 0.5) * Math.PI / 3;
+  
+  // 基础速度参数 - 确保在不同缩放级别下视觉效果一致
+  const baseSpeed = 25; // 基础速度像素/帧
+  const worldSpeed = baseSpeed / view.scale;
+  
+  // 轨迹长度 - 与速度和生命周期相关
+  const trailLength = Math.floor(80 / view.scale); // 缩放越小，轨迹越长
+  
+  const meteor = {
+    x,
+    y,
+    vx: Math.cos(angle) * worldSpeed,
+    vy: Math.sin(angle) * worldSpeed,
+    color,
+    life: Math.floor(100 / view.scale), // 生命周期与缩放相关
+    maxLife: Math.floor(100 / view.scale),
+    trail: [],
+    maxTrailLength: trailLength,
+    isNetwork: isNetworkMeteor,
+    energy: energy // 保存能量值用于视觉效果
+  };
+  
+  if (isNetworkMeteor) {
+    networkMeteors.push(meteor);
+  } else {
+    meteors.push(meteor);
+    // 广播给其他用户
+    broadcastMeteor(x, y, color, energy);
+  }
+  
+  return meteor;
+}
+
+function shootMeteor() {
+  const me = getCurrentUser();
+  if (!me) return;
+
+  const gridSize = 8;
+  const px = me.gridX * gridSize;
+  const py = me.gridY * gridSize;
+
+  const todayKey = today();
+  const rec = me.records[todayKey];
+  const color = rec ? rec.color : '#ffffff';
+  const energy = rec ? rec.energy / 100 : 0.7;
+
+  createMeteor(px, py, color, energy, false);
+}
+
+// 广播流星到其他用户（模拟网络通信）
+function broadcastMeteor(x, y, color, energy) {
+  // 在实际应用中，这里应该发送到服务器
+  // 现在我们模拟其他用户收到流星
+  setTimeout(() => {
+    simulateOtherUserMeteor();
+  }, Math.random() * 3000 + 1000);
+}
+
+// 模拟其他用户的流星（演示用）
+function simulateOtherUserMeteor() {
+  const gridSize = 8;
+  // 随机位置生成流星
+  const x = (Math.random() * 360 - 180) * gridSize;
+  const y = (Math.random() * 180 - 90) * gridSize;
+  
+  // 随机颜色和能量
+  const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7', '#dda0dd', '#98d8c8'];
+  const color = colors[Math.floor(Math.random() * colors.length)];
+  const energy = Math.random() * 0.8 + 0.2;
+  
+  createMeteor(x, y, color, energy, true);
+}
+
+function farewell() {
+  if (isLeaving) return;
+  isLeaving = true;
+
+  // 1. 立即让自己的星点变身流星
+  shootMeteor();
+
+  // 2. 等流星基本飞出屏幕（约 1800ms），再开始淡入黑屏
+  setTimeout(() => {
+    const overlay = document.getElementById('farewellOverlay');
+    overlay.style.display = 'flex';
+    overlay.style.background = 'rgba(0,0,0,0)';
+    overlay.style.transition = 'background 1.2s ease-in';
+    requestAnimationFrame(() => {
+      overlay.style.background = 'rgba(0,0,0,0.97)';
+    });
+  }, 1800);
+
+  // 3. 黑屏出现后再让"明天见"文字浮现
+  setTimeout(() => {
+    document.getElementById('farewellText').classList.add('show');
+  }, 2900);
+
+  // 4. 总流程结束后重置状态而不重载页面
+  setTimeout(() => {
+    resetUserSession();
+  }, 4800);
+}
+
+// 重置用户会话状态（允许重新登录）
+function resetUserSession() {
+  // 重置离开状态
+  isLeaving = false;
+  
+  // 清空流星数组
+  meteors = [];
+  networkMeteors = [];
+  
+  // 隐藏告别界面
+  document.getElementById('farewellOverlay').style.display = 'none';
+  document.getElementById('farewellText').classList.remove('show');
+  
+  // 显示登录界面
+  document.getElementById('registerModal').style.display = 'none';
+  document.getElementById('loginModal').style.display = 'flex';
+  
+  // 清除当前用户
+  setCurrentUser(null);
+  
+  // 重置画布视图
+  view = { x: 0, y: 0, scale: 1 };
+  
+  // 重新开始星空动画
+  startSky();
+  
+  showToast('期待你的再次光临 ✦');
+}
+
+// 切到后台 / 关闭页面也放一颗流星（轻量版，只在画布上飞过）
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && getCurrentUser() && !isLeaving) {
+    // 记录离线时间
+    const me = getCurrentUser();
+    if (me) {
+      me.lastOffline = new Date().toISOString();
+      // 保存用户数据
+      const users = getUsers();
+      users[me.name] = me;
+      saveUsers(users);
+      setCurrentUser(me);
+    }
+    shootMeteor();
+  }
+});
+
+// 定期模拟其他用户的流星
+function startNetworkSimulation() {
+  // 每10-20秒模拟一个其他用户的流星
+  setInterval(() => {
+    if (Math.random() < 0.3) { // 30%概率
+      simulateOtherUserMeteor();
+    }
+  }, Math.random() * 10000 + 10000);
+}
+
+// ========== 日历 ==========
+let calCurrentYear, calCurrentMonth;
+
+function openCalendar() {
+  const me = getCurrentUser();
+  if (!me) return;
+  const now = new Date();
+  calCurrentYear = now.getFullYear();
+  calCurrentMonth = now.getMonth();
+  document.getElementById('calendarOverlay').style.display = 'flex';
+  renderCalendar();
+}
+
+function changeMonth(delta) {
+  calCurrentMonth += delta;
+  if (calCurrentMonth < 0) { calCurrentMonth = 11; calCurrentYear -= 1; }
+  if (calCurrentMonth > 11) { calCurrentMonth = 0; calCurrentYear += 1; }
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const me = getCurrentUser();
+  document.getElementById('calMonthText').textContent = `${calCurrentYear} 年 ${calCurrentMonth + 1} 月`;
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+
+  ['一','二','三','四','五','六','日'].forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'cal-day-label';
+    el.textContent = d;
+    grid.appendChild(el);
+  });
+
+  const firstDay = new Date(calCurrentYear, calCurrentMonth, 1);
+  let startWeekday = firstDay.getDay() - 1;
+  if (startWeekday < 0) startWeekday = 6;
+  const daysInMonth = new Date(calCurrentYear, calCurrentMonth + 1, 0).getDate();
+
+  for (let i = 0; i < startWeekday; i++) {
+    const el = document.createElement('div');
+    el.className = 'cal-day empty';
+    grid.appendChild(el);
+  }
+
+  const todayDate = new Date();
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(calCurrentYear, calCurrentMonth, d);
+    const dateStr = ymd(date);
+    const isFuture = date > todayDate && dateStr !== ymd(todayDate);
+    const record = me.records[dateStr];
+
+    const el = document.createElement('div');
+    el.className = 'cal-day';
+    el.textContent = d;
+
+    if (isFuture) {
+      el.classList.add('future');
+    } else if (record) {
+      el.classList.add('has-record');
+      const brightness = Math.max(record.energy, 15) / 100;
+      el.style.background = record.color;
+      el.style.opacity = 0.3 + brightness * 0.7;
+      el.style.boxShadow = `0 0 ${brightness * 8}px ${record.color}`;
+      el.onclick = () => showDayDetail(dateStr, record);
+    }
+
+    grid.appendChild(el);
+  }
+  document.getElementById('dayDetail').style.display = 'none';
+}
+
+function showDayDetail(dateStr, record) {
+  const detail = document.getElementById('dayDetail');
+  detail.style.display = 'block';
+  document.getElementById('dayDetailDate').textContent = dateStr;
+  document.getElementById('dayDetailDot').style.background = record.color;
+  document.getElementById('dayDetailDot').style.boxShadow = `0 0 12px ${record.color}`;
+  document.getElementById('dayDetailEnergy').textContent = `能量 ${record.energy}%`;
+  document.getElementById('dayDetailNote').textContent = record.note || '（这一天没有备注）';
+}
+
+function closeCalendar() {
+  document.getElementById('calendarOverlay').style.display = 'none';
+}
+
+// ========== Toast ==========
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ========== 启动 ==========
+function setupCanvasInteraction() {
+  const canvas = document.getElementById('skyCanvas');
+  let isDragging = false;
+  let lastX = 0, lastY = 0;
+  let pinchDist = 0;
+
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const oldScale = view.scale;
+    const delta = -e.deltaY * 0.0015;
+    let newScale = oldScale * (1 + delta);
+    newScale = Math.max(0.15, Math.min(8, newScale));
+    const mx = e.clientX, my = e.clientY;
+    view.x = mx - (mx - view.x) * (newScale / oldScale);
+    view.y = my - (my - view.y) * (newScale / oldScale);
+    view.scale = newScale;
+  }, { passive: false });
+
+  canvas.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    lastX = e.clientX; lastY = e.clientY;
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    view.x += e.clientX - lastX;
+    view.y += e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+  });
+  window.addEventListener('mouseup', () => isDragging = false);
+
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      isDragging = true;
+      lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+    } else if (e.touches.length === 2) {
+      isDragging = false;
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      pinchDist = Math.sqrt(dx*dx + dy*dy);
+    }
+  }, { passive: true });
+
+  canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    if (e.touches.length === 1 && isDragging) {
+      view.x += e.touches[0].clientX - lastX;
+      view.y += e.touches[0].clientY - lastY;
+      lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+    } else if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (pinchDist > 0) {
+        const oldScale = view.scale;
+        let newScale = oldScale * (dist / pinchDist);
+        newScale = Math.max(0.15, Math.min(8, newScale));
+        const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        view.x = cx - (cx - view.x) * (newScale / oldScale);
+        view.y = cy - (cy - view.y) * (newScale / oldScale);
+        view.scale = newScale;
+      }
+      pinchDist = dist;
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', () => {
+    isDragging = false; pinchDist = 0;
+  });
+}
+
+window.addEventListener('load', () => {
+  drawColorRing();
+  const ring = document.getElementById('colorRing');
+  ring.addEventListener('click', pickColor);
+  ring.addEventListener('touchend', (e) => { e.preventDefault(); pickColor(e); });
+
+  setupCanvasInteraction();
+
+  if (getCurrentUser()) {
+    document.getElementById('registerModal').style.display = 'none';
+    document.getElementById('loginModal').style.display = 'none';
+    showMainUI();
+  } else {
+    // 即使没注册，也先把星空跑起来当背景
+    initStars();
+    requestAnimationFrame(function bgLoop() {
+      const canvas = document.getElementById('skyCanvas');
+      const ctx = canvas.getContext('2d');
+      if (canvas.width !== window.innerWidth) { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      stars.forEach(s => {
+        s.twinkle += s.speed;
+        const o = s.o * (0.5 + 0.5 * Math.sin(s.twinkle));
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${o})`;
+        ctx.fill();
+      });
+      if (!getCurrentUser()) requestAnimationFrame(bgLoop);
+    });
+  }
+});
+
+window.addEventListener('resize', () => {
+  if (getCurrentUser()) initStars();
+});
+</script>
 </body>
 </html>
